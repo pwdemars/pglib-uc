@@ -163,8 +163,9 @@ schedule = [[0]*time_periods for i in range(num_gen)]
 
 for v in m.component_data_objects(Var):
     if 'ug' in str(v):
-        gen = str(v).split("GEN",1)[1][0]
-        time_period = str(v).split(',')[1].replace(']','')
+        split_v = str(v).split(',')
+        gen = int("".join([s for s in split_v[0] if s.isdigit()]))
+        time_period = int("".join([s for s in split_v[1] if s.isdigit()]))
         schedule[int(gen)][int(time_period)-1] = v.value
         
 schedule = list(map(list, zip(*schedule)))
