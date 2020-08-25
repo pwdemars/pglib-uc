@@ -151,4 +151,27 @@ from pyomo.opt import SolverFactory
 cbc = SolverFactory('cbc')
 
 print("solving")
-cbc.solve(m, options={'ratioGap':0.01}, tee=True)
+results = cbc.solve(m, options={'ratioGap':0.01}, tee=True)
+
+# Save results (my code)
+
+import csv 
+
+num_gen = len(data['thermal_generators'])
+time_periods = data['time_periods']
+schedule = [[0]*time_periods for i in range(num_gen)]
+
+for v in m.component_data_objects(Var):
+    if 'ug' in str(v):
+        gen = str(v).split("GEN",1)[1][0]
+        time_period = str(v).split(',')[1].replace(']','')
+        schedule[int(gen)][int(time_period)-1] = v.value
+        
+schedule = list(map(list, zip(*schedule)))
+schedule.insert(0, ['schedule_'+str(i) for i in range(num_gen)])
+
+save_fn = data_file.split('.json')[0] + '_solution.csv'
+
+with open(save_fn, "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerows(schedule)
