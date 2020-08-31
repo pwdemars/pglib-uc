@@ -152,7 +152,6 @@ from pyomo.opt import SolverFactory
 glpk = SolverFactory('glpk')
 
 print("solving")
-# results = glpk.solve(m, options={'ratioGap':0.05}, tee=True)
 results = glpk.solve(m)
 
 # Save results (my code)
