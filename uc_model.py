@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from pyomo.environ import *
 import json
 import sys
@@ -148,10 +149,11 @@ for w, gen in renewable_gens.items():
 print("model setup complete")
 
 from pyomo.opt import SolverFactory
-cbc = SolverFactory('cbc')
+glpk = SolverFactory('glpk')
 
 print("solving")
-results = cbc.solve(m, options={'ratioGap':0.01}, tee=True)
+# results = glpk.solve(m, options={'ratioGap':0.05}, tee=True)
+results = glpk.solve(m)
 
 # Save results (my code)
 
