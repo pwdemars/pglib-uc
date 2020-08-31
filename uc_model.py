@@ -151,7 +151,7 @@ from pyomo.opt import SolverFactory
 cbc = SolverFactory('cbc')
 
 print("solving")
-results = cbc.solve(m, options={'ratioGap':0.01}, tee=True)
+results = cbc.solve(m, options={'ratioGap':0.02}, tee=True)
 
 # Save results (my code)
 
