@@ -2,6 +2,7 @@
 from pyomo.environ import *
 import json
 import sys
+import time
 
 ## Grab instance file from first command line argument
 data_file = sys.argv[1]
@@ -149,10 +150,14 @@ for w, gen in renewable_gens.items():
 print("model setup complete")
 
 from pyomo.opt import SolverFactory
-glpk = SolverFactory('glpk')
+gurobi = SolverFactory('gurobi')
+gurobi.options['threads'] = 1
+gurobi.options['mipgap'] = 0.01
 
 print("solving")
-results = glpk.solve(m)
+s = time.time()
+results = gurobi.solve(m)
+e = time.time()
 
 # Save results (my code)
 
@@ -173,7 +178,15 @@ schedule = list(map(list, zip(*schedule)))
 schedule.insert(0, ['schedule_'+str(i) for i in range(num_gen)])
 
 save_fn = data_file.split('.json')[0] + '_solution.csv'
+time_fn = data_file.split('.json')[0] + '_time.txt'
+
 
 with open(save_fn, "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerows(schedule)
+
+with open(time_fn, 'w') as f:
+    f.write(str(e-s))
+    f.close()
+
+
