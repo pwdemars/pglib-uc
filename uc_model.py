@@ -152,37 +152,62 @@ def solve_milp(data):
     cbc = SolverFactory('cbc')
 
     print("solving")
-    results = cbc.solve(m, options={'ratioGap':0.01}, tee=True)
+    results = cbc.solve(m, options={'ratioGap':0.01}, tee=False)
 
     return m
 
-## Grab instance file from first command line argument
-data_file = sys.argv[1]
+def solution_to_schedule(m, data):
+    """
+    Retrieve the binary schedule from a MILP solution object m, 
+    with problem data (dict) in data.
+    """
+    num_gen = len(data['thermal_generators'])
+    time_periods = data['time_periods']
+    schedule = [[0]*time_periods for i in range(num_gen)]
 
-print('loading data')
-data = json.load(open(data_file, 'r'))
+    schedule = np.zeros((time_periods, num_gen))
+    dispatch = np.zeros((time_periods, num_gen))
 
-# Solve the MILP
-m = solve_milp(data)
+    for v in m.component_data_objects(Var):
+        if 'ug' in str(v):
+            split_v = str(v).split(',')
+            gen = int("".join([s for s in split_v[0] if s.isdigit()]))
+            time_period = int("".join([s for s in split_v[1] if s.isdigit()]))
+            schedule[int(time_period-1), int(gen)] = int(v.value)
 
-num_gen = len(data['thermal_generators'])
-time_periods = data['time_periods']
-schedule = [[0]*time_periods for i in range(num_gen)]
+    return schedule
 
-schedule = np.zeros((time_periods, num_gen))
-dispatch = np.zeros((time_periods, num_gen))
+if __name__=="__main__":
 
-for v in m.component_data_objects(Var):
-    if 'ug' in str(v):
-        split_v = str(v).split(',')
-        gen = int("".join([s for s in split_v[0] if s.isdigit()]))
-        time_period = int("".join([s for s in split_v[1] if s.isdigit()]))
-        schedule[int(time_period-1), int(gen)] = int(v.value)
+    ## Grab instance file from first command line argument
+    data_file = sys.argv[1]
 
-sched_cols = ['schedule_'+str(i) for i in range(num_gen)]
-schedule = pd.DataFrame(schedule, columns=sched_cols)
-print(schedule)
+    print('loading data')
+    data = json.load(open(data_file, 'r'))
 
-save_fn = data_file.split('.json')[0] + '_solution.csv'
-schedule.to_csv(save_fn, index=False)
+    # Solve the MILP
+    start_time = time.time()
+    m = solve_milp(data)
+    time_taken = time.time()-start_time
+
+    num_gen = len(data['thermal_generators'])
+    time_periods = data['time_periods']
+    schedule = [[0]*time_periods for i in range(num_gen)]
+
+    schedule = np.zeros((time_periods, num_gen))
+    dispatch = np.zeros((time_periods, num_gen))
+
+    for v in m.component_data_objects(Var):
+        if 'ug' in str(v):
+            split_v = str(v).split(',')
+            gen = int("".join([s for s in split_v[0] if s.isdigit()]))
+            time_period = int("".join([s for s in split_v[1] if s.isdigit()]))
+            schedule[int(time_period-1), int(gen)] = int(v.value)
+
+    sched_cols = ['schedule_'+str(i) for i in range(num_gen)]
+    schedule = pd.DataFrame(schedule, columns=sched_cols)
+    print(schedule)
+
+    save_fn = data_file.split('.json')[0] + '_solution.csv'
+    schedule.to_csv(save_fn, index=False)
 
