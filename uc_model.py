@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from pyomo.environ import *
 import csv 
 import json
@@ -5,6 +6,7 @@ import sys
 import numpy as np
 import pandas as pd 
 from pyomo.opt import SolverFactory
+import time
 
 
 def solve_milp(data):
