@@ -36,7 +36,7 @@ def create_problem_dict(demand, wind=None, **params):
     gen_info = env.gen_info
 #    reserves = [a*RESERVE_MARGIN for a in demand]
     reserves = [sum(gen_info.max_output)*0.1]*len(net_demand) # Reserve margin is a fixed percentage of the total capacity
-    dispatch_freq = params.get('env_dispatch_freq_mins')/60
+    dispatch_freq = params.get('dispatch_freq_mins')/60
     num_periods = len(net_demand)
 
     all_gens = {}

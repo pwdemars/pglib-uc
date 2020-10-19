@@ -55,7 +55,6 @@ if __name__=="__main__":
 
         print(problem_dict)
 
-
         # Solve the MILP
         s = time.time()
         solution = solve_milp(problem_dict)
@@ -71,7 +70,7 @@ if __name__=="__main__":
         df.to_csv(os.path.join(args.save_dir, '{}_solution.csv'.format(prof_name)), index=False)
 
         # initialise environment for sample operating costs
-        env = make_env(mode='test',forecast=demand, reference_forecast=None, seed=2, **params)
+        env = make_env(mode='test',demand=demand, wind=wind, **params)
 
         test_costs = []
         print("Testing schedule...")
