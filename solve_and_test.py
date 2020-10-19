@@ -33,7 +33,7 @@ if __name__=="__main__":
         json.dump(params, fp)
 
     # get list of test profiles
-    test_profiles = [f for f in os.listdir(args.test_data_dir) if '.txt' in f]
+    test_profiles = [f for f in os.listdir(args.test_data_dir) if '.csv' in f]
     test_profiles.sort()
 
     all_test_costs = {}
@@ -41,11 +41,20 @@ if __name__=="__main__":
 
     for f in test_profiles:
         
-        prof_name = f.split('.txt')[0]
+        prof_name = f.split('.')[0]
 
         # Formulate the problem dictionary
-        demand = np.genfromtxt(os.path.join(args.test_data_dir, f))
-        problem_dict = create_problem_dict(demand, **params)
+#        demand = np.genfromtxt(os.path.join(args.test_data_dir, f))
+#        problem_dict = create_problem_dict(demand, **params)
+
+        # Formulate the problem dictionary (with wind)
+        df = pd.read_csv(os.path.join(args.test_data_dir, f))
+        demand = df.demand.values
+        wind = df.wind.values
+        problem_dict = create_problem_dict(demand, wind, **params)
+
+        print(problem_dict)
+
 
         # Solve the MILP
         s = time.time()

@@ -22,7 +22,7 @@ def calculate_piecewise_production(gen_info, idx, n_hrs, N=4):
         pairs.append({"mw": float(mw), "cost": float(cost)})
     return pairs
 
-def create_problem_dict(demand, **params):
+def create_problem_dict(demand, wind=None, **params):
     """
     Create a dictionary defining the problem for input to the pglib model.
 
@@ -30,11 +30,14 @@ def create_problem_dict(demand, **params):
         - demand (array): demand profile
         - params (dict): parameters file, gives number of generators, dispatch frequency.
     """
+    if wind is not None:
+        net_demand = demand - wind
     env = make_env(**params)
     gen_info = env.gen_info
-    reserves = [a*RESERVE_MARGIN for a in demand]
+#    reserves = [a*RESERVE_MARGIN for a in demand]
+    reserves = [sum(gen_info.max_output)*0.1]*len(net_demand) # Reserve margin is a fixed percentage of the total capacity
     dispatch_freq = params.get('env_dispatch_freq_mins')/60
-    num_periods = len(demand)
+    num_periods = len(net_demand)
 
     all_gens = {}
     for g in range(params.get('num_gen')):
@@ -58,7 +61,7 @@ def create_problem_dict(demand, **params):
         all_gens[GEN_NAME] = foo
         
     all_json = {"time_periods":num_periods,
-                "demand":list(demand),
+                "demand":list(net_demand),
                 "reserves":reserves,
                 "thermal_generators":all_gens,
                 "renewable_generators": {}}
