@@ -11,6 +11,8 @@ from rl4uc.rl4uc.environment import make_env
 from create_milp_dict import create_problem_dict
 from uc_model import solve_milp, solution_to_schedule
 
+SEED=2
+
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='MILP solutions to UC problem (and testing with stochastic environment')
     parser.add_argument('--save_dir', type=str, required=True,
@@ -43,17 +45,11 @@ if __name__=="__main__":
         
         prof_name = f.split('.')[0]
 
-        # Formulate the problem dictionary
-#        demand = np.genfromtxt(os.path.join(args.test_data_dir, f))
-#        problem_dict = create_problem_dict(demand, **params)
-
         # Formulate the problem dictionary (with wind)
         df = pd.read_csv(os.path.join(args.test_data_dir, f))
         demand = df.demand.values
         wind = df.wind.values
         problem_dict = create_problem_dict(demand, wind, **params)
-
-        print(problem_dict)
 
         # Solve the MILP
         s = time.time()
@@ -74,6 +70,7 @@ if __name__=="__main__":
 
         test_costs = []
         print("Testing schedule...")
+        np.random.seed(SEED)
         for i in range(args.num_samples):
             env.reset()
             total_reward = 0 

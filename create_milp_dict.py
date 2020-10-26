@@ -32,11 +32,14 @@ def create_problem_dict(demand, wind=None, **params):
     """
     if wind is not None:
         net_demand = demand - wind
+        print(net_demand)
     env = make_env(**params)
     gen_info = env.gen_info
 #    reserves = [a*RESERVE_MARGIN for a in demand]
     reserves = [sum(gen_info.max_output)*0.1]*len(net_demand) # Reserve margin is a fixed percentage of the total capacity
+    print(reserves)
     dispatch_freq = params.get('dispatch_freq_mins')/60
+    print(dispatch_freq)
     num_periods = len(net_demand)
 
     all_gens = {}
