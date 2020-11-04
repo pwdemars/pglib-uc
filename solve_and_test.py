@@ -19,6 +19,8 @@ if __name__=="__main__":
                         help='Directory to save results')
     parser.add_argument('--params_fn', type=str, required=True,
                         help='Filename for parameters for the environment')
+    parser.add_argument('--arma_params_fn', type=str, required=True,
+                        help='Filename for ARMA parameters.')
     parser.add_argument('--test_data_dir', type=str, required=True,
                         help='Directory containing batch of .txt demand profiles to solve')
     parser.add_argument('--num_samples', type=int, required=False, default=100,
@@ -26,9 +28,17 @@ if __name__=="__main__":
 
     args = parser.parse_args()
     params = json.load(open(args.params_fn))
+    arma_params = json.load(open(args.arma_params_fn))
 
     # Create results directory
     os.makedirs(args.save_dir, exist_ok=True)
+
+    # Save ARMA params
+    with open(os.path.join(args.save_dir, 'arma_params.json'), 'w') as fp:
+        json.dump(params, fp)
+
+    # Update params with ARMA params
+    params.update({'arma_params': arma_params})
 
     # Save params file to save_dir 
     with open(os.path.join(args.save_dir, 'params.json'), 'w') as fp:
