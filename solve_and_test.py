@@ -25,6 +25,8 @@ if __name__=="__main__":
                         help='Directory containing batch of .txt demand profiles to solve')
     parser.add_argument('--num_samples', type=int, required=False, default=100,
                         help='Number of demand realisation to compute costs for')
+    parser.add_argument('--reserve_margin', type=int, required=False, default=10,
+                        help='Reserve margin as % of forecast net demand')
 
     args = parser.parse_args()
     params = json.load(open(args.params_fn))
@@ -59,7 +61,11 @@ if __name__=="__main__":
         df = pd.read_csv(os.path.join(args.test_data_dir, f))
         demand = df.demand.values
         wind = df.wind.values
-        problem_dict = create_problem_dict(demand, wind, **params)
+        problem_dict = create_problem_dict(demand, wind, args.reserve_margin, **params)
+
+        fn = prof_name + '.json'
+        with open(os.path.join(args.save_dir, fn), 'w') as fp:
+            json.dump(problem_dict, fp)
 
         # Solve the MILP
         s = time.time()
