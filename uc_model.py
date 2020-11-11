@@ -8,6 +8,7 @@ import pandas as pd
 from pyomo.opt import SolverFactory
 import time
 
+SOLVER_NAME = 'gurobi'
 
 def solve_milp(data):
     thermal_gens = data['thermal_generators']
@@ -149,10 +150,10 @@ def solve_milp(data):
 
     print("model setup complete")
 
-    cbc = SolverFactory('cbc')
+    solver = SolverFactory(SOLVER_NAME)
 
     print("solving")
-    results = cbc.solve(m, options={'ratioGap':0.01}, tee=False)
+    results = solver.solve(m, options={'ratioGap':0.01}, tee=False)
 
     return m
 
