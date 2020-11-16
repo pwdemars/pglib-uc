@@ -32,7 +32,9 @@ def create_problem_dict(demand, wind, reserve_margin, **params):
         net_demand = demand - wind
     env = make_env(**params)
     gen_info = env.gen_info
-    reserves = [a*reserve_margin/100 for a in net_demand] # Reserve margin is % of net demand
+    reserves = np.array([a*reserve_margin/100 for a in net_demand]) # Reserve margin is % of net demand
+    max_reserves = np.ones(net_demand.size)*env.max_demand - np.array(net_demand)
+    reserves = list(np.min(np.array([reserves, max_reserves]), axis=0))
 #    reserves = [sum(gen_info.max_output)*0.1]*len(net_demand) # Reserve margin is a fixed percentage of the total capacity
     dispatch_freq = params.get('dispatch_freq_mins')/60
     num_periods = len(net_demand)
