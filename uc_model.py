@@ -8,7 +8,7 @@ import pandas as pd
 from pyomo.opt import SolverFactory
 import time
 
-SOLVER_NAME = 'gurobi'
+SOLVER_NAME = 'cbc'
 
 def solve_milp(data):
     thermal_gens = data['thermal_generators']
