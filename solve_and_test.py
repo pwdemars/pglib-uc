@@ -35,16 +35,16 @@ if __name__=="__main__":
     # Create results directory
     os.makedirs(args.save_dir, exist_ok=True)
 
+    # Save params file to save_dir 
+    with open(os.path.join(args.save_dir, 'params.json'), 'w') as fp:
+        json.dump(params, fp)
+
     # Save ARMA params
     with open(os.path.join(args.save_dir, 'arma_params.json'), 'w') as fp:
         json.dump(params, fp)
 
     # Update params with ARMA params
     params.update({'arma_params': arma_params})
-
-    # Save params file to save_dir 
-    with open(os.path.join(args.save_dir, 'params.json'), 'w') as fp:
-        json.dump(params, fp)
 
     # get list of test profiles
     test_profiles = [f for f in os.listdir(args.test_data_dir) if '.csv' in f]
@@ -58,9 +58,9 @@ if __name__=="__main__":
         prof_name = f.split('.')[0]
 
         # Formulate the problem dictionary (with wind)
-        df = pd.read_csv(os.path.join(args.test_data_dir, f))
-        demand = df.demand.values
-        wind = df.wind.values
+        profile_df = pd.read_csv(os.path.join(args.test_data_dir, f))
+        demand = profile_df.demand.values
+        wind = profile_df.wind.values
         problem_dict = create_problem_dict(demand, wind, args.reserve_margin, **params)
 
         fn = prof_name + '.json'
@@ -82,7 +82,7 @@ if __name__=="__main__":
         df.to_csv(os.path.join(args.save_dir, '{}_solution.csv'.format(prof_name)), index=False)
 
         # initialise environment for sample operating costs
-        env = make_env(mode='test',demand=demand, wind=wind, **params)
+        env = make_env(mode='test', profiles=profile_df, **params)
 
         test_costs = []
         print("Testing schedule...")
