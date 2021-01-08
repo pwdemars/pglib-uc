@@ -37,7 +37,7 @@ if __name__=="__main__":
 
     # Save ARMA params
     with open(os.path.join(args.save_dir, 'arma_params.json'), 'w') as fp:
-        json.dump(params, fp)
+        json.dump(arma_params, fp)
 
     # Update params with ARMA params
     params.update({'arma_params': arma_params})
