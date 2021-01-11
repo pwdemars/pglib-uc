@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import pyomo.environ
 from pyomo.environ import *
 import csv 
 import json
