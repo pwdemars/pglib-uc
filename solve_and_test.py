@@ -26,7 +26,7 @@ if __name__=="__main__":
     parser.add_argument('--num_samples', type=int, required=False, default=100,
                         help='Number of demand realisation to compute costs for')
     parser.add_argument('--reserve_margin', type=int, required=False, default=10,
-                        help='Reserve margin as % of forecast net demand')
+                        help='Reserve margin as percent of forecast net demand')
 
     args = parser.parse_args()
     params = json.load(open(args.params_fn))
