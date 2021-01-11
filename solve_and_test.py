@@ -56,6 +56,7 @@ if __name__=="__main__":
     for f in test_profiles:
         
         prof_name = f.split('.')[0]
+        print(prof_name)
 
         # Formulate the problem dictionary (with wind)
         profile_df = pd.read_csv(os.path.join(args.test_data_dir, f))
@@ -82,7 +83,7 @@ if __name__=="__main__":
         df.to_csv(os.path.join(args.save_dir, '{}_solution.csv'.format(prof_name)), index=False)
 
         # initialise environment for sample operating costs
-        env = make_env(mode='test', profiles=profile_df, **params)
+        env = make_env(mode='test', profiles_df=profile_df, **params)
 
         test_costs = []
         print("Testing schedule...")
