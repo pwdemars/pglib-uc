@@ -8,10 +8,11 @@ import os
 import time
 
 from rl4uc.rl4uc.environment import make_env
+from helpers import test_schedule, save_results
 from create_milp_dict import create_problem_dict
 from uc_model import solve_milp, solution_to_schedule
 
-SEED=2
+SEED=999
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='MILP solutions to UC problem (and testing with stochastic environment')
@@ -34,6 +35,9 @@ if __name__=="__main__":
 
     # Create results directory
     os.makedirs(args.save_dir, exist_ok=True)
+
+    # Update with indicator that this is a MILP results directory:
+    params.update({'milp': 'true'})
 
     # Save params file to save_dir 
     with open(os.path.join(args.save_dir, 'params.json'), 'w') as fp:
@@ -85,23 +89,34 @@ if __name__=="__main__":
         # initialise environment for sample operating costs
         env = make_env(mode='test', profiles_df=profile_df, **params)
 
-        test_costs = []
-        print("Testing schedule...")
-        np.random.seed(SEED)
-        for i in range(args.num_samples):
-            env.reset()
-            total_reward = 0 
-            for action in schedule:
-                action = np.where(np.array(action)>0, 1, 0)
-                obs,reward,done = env.step(action)
-                total_reward += reward
-            test_costs.append(-total_reward)
-        all_test_costs[prof_name] = test_costs
+        TEST_SAMPLE_SEED=999
+        test_costs, lost_loads = test_schedule(env, schedule, TEST_SAMPLE_SEED, args.num_samples)
+        save_results(prof_name, args.save_dir, env.num_gen, schedule, test_costs, lost_loads, time_taken)
+
         print("Done")
         print()
+        print("Mean costs: ${:.2f}".format(np.mean(test_costs)))
+        print("Lost load prob: {:.3f}%".format(np.sum(lost_loads)/(args.num_samples * env.episode_length)))
+        print("Time taken: {:.2f}s".format(time_taken))
+        print() 
 
-    np.savetxt(os.path.join(args.save_dir, 'time_taken.txt'), np.array(all_times), fmt='%1.2f')
+    #     test_costs = []
+    #     print("Testing schedule...")
+    #     np.random.seed(SEED)
+    #     for i in range(args.num_samples):
+    #         env.reset()
+    #         total_reward = 0 
+    #         for action in schedule:
+    #             action = np.where(np.array(action)>0, 1, 0)
+    #             obs,reward,done = env.step(action)
+    #             total_reward += reward
+    #         test_costs.append(-total_reward)
+    #     all_test_costs[prof_name] = test_costs
+    #     print("Done")
+    #     print()
 
-    all_test_costs = pd.DataFrame(all_test_costs)
-    all_test_costs.to_csv(os.path.join(args.save_dir, 'sample_costs.csv'), index=False)
+    # np.savetxt(os.path.join(args.save_dir, 'time_taken.txt'), np.array(all_times), fmt='%1.2f')
+
+    # all_test_costs = pd.DataFrame(all_test_costs)
+    # all_test_costs.to_csv(os.path.join(args.save_dir, 'sample_costs.csv'), index=False)
 
