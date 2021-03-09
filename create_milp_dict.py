@@ -20,7 +20,7 @@ def calculate_piecewise_production(gen_info, idx, n_hrs, N=4):
         pairs.append({"mw": float(mw), "cost": float(cost)})
     return pairs
 
-def create_problem_dict(demand, wind, reserve_margin, **params):
+def create_problem_dict(demand, wind, reserve_pct=None, reserve_mw=None, **params):
     """
     Create a dictionary defining the problem for input to the pglib model.
 
@@ -32,10 +32,17 @@ def create_problem_dict(demand, wind, reserve_margin, **params):
         net_demand = demand - wind
     env = make_env(**params)
     gen_info = env.gen_info
-    reserves = np.array([a*reserve_margin/100 for a in net_demand]) # Reserve margin is % of net demand
+
+    if reserve_pct is not None:
+      reserves = np.array([a*reserve_pct/100 for a in net_demand]) # Reserve margin is % of net demand
+    elif reserve_mw is not None:
+      reserves = reserve_mw * np.ones(len(net_demand))
+    else:
+      raise ValueError('Must set reserve_pct of reserve_mw')
+
     max_reserves = np.ones(net_demand.size)*env.max_demand - np.array(net_demand)
     reserves = list(np.min(np.array([reserves, max_reserves]), axis=0))
-#    reserves = [sum(gen_info.max_output)*0.1]*len(net_demand) # Reserve margin is a fixed percentage of the total capacity
+
     dispatch_freq = params.get('dispatch_freq_mins')/60
     num_periods = len(net_demand)
 

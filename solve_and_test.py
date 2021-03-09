@@ -8,7 +8,7 @@ import os
 import time
 
 from rl4uc.rl4uc.environment import make_env
-from helpers import test_schedule, save_results
+from helpers import test_schedule, save_results, get_scenarios
 from create_milp_dict import create_problem_dict
 from uc_model import solve_milp, solution_to_schedule
 
@@ -24,9 +24,13 @@ if __name__=="__main__":
                         help='Filename for ARMA parameters.')
     parser.add_argument('--test_data_dir', type=str, required=True,
                         help='Directory containing batch of .txt demand profiles to solve')
-    parser.add_argument('--num_samples', type=int, required=False, default=100,
+    parser.add_argument('--num_samples', type=int, required=False, default=1000,
                         help='Number of demand realisation to compute costs for')
-    parser.add_argument('--reserve_margin', type=int, required=False, default=10,
+    parser.add_argument('--reserve_pct', type=int, required=False, default=None,
+                        help='Reserve margin as percent of forecast net demand')
+    parser.add_argument('--reserve_sigma', type=int, required=False, default=None,
+                        help='Number of sigma to consider for reserve constraint')
+    parser.add_argument('--perfect_forecast', type=bool, required=False, default=False,
                         help='Reserve margin as percent of forecast net demand')
 
     args = parser.parse_args()
@@ -36,8 +40,14 @@ if __name__=="__main__":
     # Create results directory
     os.makedirs(args.save_dir, exist_ok=True)
 
-    # Update with indicator that this is a MILP results directory:
-    params.update({'milp': 'true'})
+    # If using perfect forecast, set reserve margin to 0
+    if args.perfect_forecast: args.reserve_pct=0
+
+    # Update params with indicator that this is a MILP results directory:
+    res = 'perfect' if args.perfect_forecast else args.reserve_pct
+    params.update({'milp': 'true',
+                   'reserve': res,
+                   'reserve_sigma': args.reserve_sigma})
 
     # Save params file to save_dir 
     with open(os.path.join(args.save_dir, 'params.json'), 'w') as fp:
@@ -49,6 +59,17 @@ if __name__=="__main__":
 
     # Update params with ARMA params
     params.update({'arma_params': arma_params})
+
+    # If using sigma for reserve constraint, determine reserve constraint here:
+    if args.reserve_sigma is not None:
+        np.random.seed(SEED)
+        env = make_env(mode='train', arma_params=arma_params)
+        scenarios = get_scenarios(env, 1000)
+        sigma = np.std(scenarios)
+        reserve_mw = args.reserve_sigma * sigma
+        print(reserve_mw)
+    else:
+        reserve_mw = None
 
     # get list of test profiles
     test_profiles = [f for f in os.listdir(args.test_data_dir) if '.csv' in f]
@@ -66,7 +87,8 @@ if __name__=="__main__":
         profile_df = pd.read_csv(os.path.join(args.test_data_dir, f))
         demand = profile_df.demand.values
         wind = profile_df.wind.values
-        problem_dict = create_problem_dict(demand, wind, args.reserve_margin, **params)
+        problem_dict = create_problem_dict(demand, wind, reserve_pct=args.reserve_pct, reserve_mw=reserve_mw, **params)
+        
 
         fn = prof_name + '.json'
         with open(os.path.join(args.save_dir, fn), 'w') as fp:
@@ -90,33 +112,13 @@ if __name__=="__main__":
         env = make_env(mode='test', profiles_df=profile_df, **params)
 
         TEST_SAMPLE_SEED=999
-        test_costs, lost_loads = test_schedule(env, schedule, TEST_SAMPLE_SEED, args.num_samples)
+        test_costs, lost_loads = test_schedule(env, schedule, TEST_SAMPLE_SEED, args.num_samples, args.perfect_forecast)
         save_results(prof_name, args.save_dir, env.num_gen, schedule, test_costs, lost_loads, time_taken)
 
         print("Done")
         print()
         print("Mean costs: ${:.2f}".format(np.mean(test_costs)))
-        print("Lost load prob: {:.3f}%".format(np.sum(lost_loads)/(args.num_samples * env.episode_length)))
+        print("Lost load prob: {:.3f}%".format(100*np.sum(lost_loads)/(args.num_samples * env.episode_length)))
         print("Time taken: {:.2f}s".format(time_taken))
         print() 
-
-    #     test_costs = []
-    #     print("Testing schedule...")
-    #     np.random.seed(SEED)
-    #     for i in range(args.num_samples):
-    #         env.reset()
-    #         total_reward = 0 
-    #         for action in schedule:
-    #             action = np.where(np.array(action)>0, 1, 0)
-    #             obs,reward,done = env.step(action)
-    #             total_reward += reward
-    #         test_costs.append(-total_reward)
-    #     all_test_costs[prof_name] = test_costs
-    #     print("Done")
-    #     print()
-
-    # np.savetxt(os.path.join(args.save_dir, 'time_taken.txt'), np.array(all_times), fmt='%1.2f')
-
-    # all_test_costs = pd.DataFrame(all_test_costs)
-    # all_test_costs.to_csv(os.path.join(args.save_dir, 'sample_costs.csv'), index=False)
 
