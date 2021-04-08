@@ -18,10 +18,8 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description='MILP solutions to UC problem (and testing with stochastic environment')
     parser.add_argument('--save_dir', type=str, required=True,
                         help='Directory to save results')
-    parser.add_argument('--params_fn', type=str, required=True,
-                        help='Filename for parameters for the environment')
-    parser.add_argument('--arma_params_fn', type=str, required=True,
-                        help='Filename for ARMA parameters.')
+    parser.add_argument('--env_params_fn', type=str, required=True,
+                        help='Filename for environment parameters.')
     parser.add_argument('--test_data_dir', type=str, required=True,
                         help='Directory containing batch of .txt demand profiles to solve')
     parser.add_argument('--num_samples', type=int, required=False, default=1000,
@@ -31,43 +29,37 @@ if __name__=="__main__":
     parser.add_argument('--reserve_sigma', type=int, required=False, default=None,
                         help='Number of sigma to consider for reserve constraint')
     parser.add_argument('--perfect_forecast', type=bool, required=False, default=False,
-                        help='Reserve margin as percent of forecast net demand')
+                        help='Boolean for perfect forecast')
 
     args = parser.parse_args()
-    params = json.load(open(args.params_fn))
-    arma_params = json.load(open(args.arma_params_fn))
-
-    # Create results directory
-    os.makedirs(args.save_dir, exist_ok=True)
 
     # If using perfect forecast, set reserve margin to 0
     if args.perfect_forecast: args.reserve_pct=0
 
-    # Update params with indicator that this is a MILP results directory:
-    res = 'perfect' if args.perfect_forecast else args.reserve_pct
-    params.update({'milp': 'true',
-                   'reserve': res,
-                   'reserve_sigma': args.reserve_sigma})
+    # Create results directory
+    os.makedirs(args.save_dir, exist_ok=True)
+
+    # Update params
+    params = vars(args)
+
+    # Read the parameters
+    env_params = json.load(open(args.env_params_fn))
 
     # Save params file to save_dir 
     with open(os.path.join(args.save_dir, 'params.json'), 'w') as fp:
-        json.dump(params, fp)
+        fp.write(json.dumps(params, sort_keys=True, indent=4))
 
-    # Save ARMA params
-    with open(os.path.join(args.save_dir, 'arma_params.json'), 'w') as fp:
-        json.dump(arma_params, fp)
-
-    # Update params with ARMA params
-    params.update({'arma_params': arma_params})
+    # Save env params to save_dir
+    with open(os.path.join(args.save_dir, 'env_params.json'), 'w') as fp:
+        fp.write(json.dumps(env_params, sort_keys=True, indent=4))
 
     # If using sigma for reserve constraint, determine reserve constraint here:
     if args.reserve_sigma is not None:
         np.random.seed(SEED)
-        env = make_env(mode='train', arma_params=arma_params)
+        env = make_env(mode='train', **env_params)
         scenarios = get_scenarios(env, 1000)
         sigma = np.std(scenarios)
         reserve_mw = args.reserve_sigma * sigma
-        print(reserve_mw)
     else:
         reserve_mw = None
 
@@ -87,7 +79,7 @@ if __name__=="__main__":
         profile_df = pd.read_csv(os.path.join(args.test_data_dir, f))
         demand = profile_df.demand.values
         wind = profile_df.wind.values
-        problem_dict = create_problem_dict(demand, wind, reserve_pct=args.reserve_pct, reserve_mw=reserve_mw, **params)
+        problem_dict = create_problem_dict(demand, wind, env_params=env_params, reserve_pct=args.reserve_pct, reserve_mw=reserve_mw)
         
 
         fn = prof_name + '.json'
@@ -104,12 +96,12 @@ if __name__=="__main__":
         schedule = solution_to_schedule(solution, problem_dict)
         
         # Save the binary schedule as a .csv file
-        columns = ['schedule_' + str(i) for i in range(params.get('num_gen'))]
+        columns = ['schedule_' + str(i) for i in range(env_params.get('num_gen'))]
         df = pd.DataFrame(schedule, columns=columns)
         df.to_csv(os.path.join(args.save_dir, '{}_solution.csv'.format(prof_name)), index=False)
 
         # initialise environment for sample operating costs
-        env = make_env(mode='test', profiles_df=profile_df, **params)
+        env = make_env(mode='test', profiles_df=profile_df, **env_params)
 
         TEST_SAMPLE_SEED=999
         test_costs, lost_loads = test_schedule(env, schedule, TEST_SAMPLE_SEED, args.num_samples, args.perfect_forecast)

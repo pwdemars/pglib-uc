@@ -20,7 +20,7 @@ def calculate_piecewise_production(gen_info, idx, n_hrs, N=4):
         pairs.append({"mw": float(mw), "cost": float(cost)})
     return pairs
 
-def create_problem_dict(demand, wind, reserve_pct=None, reserve_mw=None, **params):
+def create_problem_dict(demand, wind, env_params, reserve_pct=None, reserve_mw=None):
     """
     Create a dictionary defining the problem for input to the pglib model.
 
@@ -30,7 +30,7 @@ def create_problem_dict(demand, wind, reserve_pct=None, reserve_mw=None, **param
     """
     if wind is not None:
         net_demand = demand - wind
-    env = make_env(**params)
+    env = make_env(**env_params)
     gen_info = env.gen_info
 
     if reserve_pct is not None:
@@ -43,11 +43,11 @@ def create_problem_dict(demand, wind, reserve_pct=None, reserve_mw=None, **param
     max_reserves = np.ones(net_demand.size)*env.max_demand - np.array(net_demand)
     reserves = list(np.min(np.array([reserves, max_reserves]), axis=0))
 
-    dispatch_freq = params.get('dispatch_freq_mins')/60
+    dispatch_freq = env.dispatch_freq_mins/60
     num_periods = len(net_demand)
 
     all_gens = {}
-    for g in range(params.get('num_gen')):
+    for g in range(env.num_gen):
         GEN_NAME = 'GEN'+str(g)
         foo = {"must_run": 0,
                "power_output_minimum": float(gen_info.min_output.values[g]), 
