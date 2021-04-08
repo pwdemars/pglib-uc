@@ -4,7 +4,15 @@
 date=$(date +"%y-%m-%d")
 
 for g in 10 20 30 ;
-do python solve_and_test.py --save_dir results/${date}_106/milp_g${g}_ \
+do python solve_and_test.py --save_dir results/${date}_106/milp_g${g}_perfect \
+						 --env_params_fn $HOME/ts4uc/data/day_ahead/${g}gen/30min/env_params.json \
+						 --test_data_dir $HOME/ts4uc/data/day_ahead/${g}gen/30min \
+						 --num_samples 1000 \
+						 --perfect_forecast true ;
+done 					
+
+for g in 10 20 30 ;
+do python solve_and_test.py --save_dir results/${date}_106/milp_g${g}_4sigma \
 						 --env_params_fn $HOME/ts4uc/data/day_ahead/${g}gen/30min/env_params.json \
 						 --test_data_dir $HOME/ts4uc/data/day_ahead/${g}gen/30min \
 						 --num_samples 1000 \

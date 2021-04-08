@@ -42,6 +42,9 @@ if __name__=="__main__":
     # Update params
     params = vars(args)
 
+    res = 'perfect' if args.perfect_forecast else args.reserve_pct
+    params.update({'milp': 'true',
+                   'reserve': res})
     # Read the parameters
     env_params = json.load(open(args.env_params_fn))
 
