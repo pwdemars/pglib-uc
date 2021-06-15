@@ -8,7 +8,7 @@ Created on Fri Sep  4 10:18:16 2020
 
 import numpy as np
 
-from rl4uc.rl4uc.environment import make_env
+from rl4uc.environment import make_env
 
 
 def calculate_piecewise_production(gen_info, idx, n_hrs, N=4):
@@ -23,7 +23,8 @@ def calculate_piecewise_production(gen_info, idx, n_hrs, N=4):
     return pairs
 
 def create_problem_dict(demand, wind, env_params,
-                        reserve_pct=None, reserve_mw=None):
+                        reserve_pct=None, reserve_mw=None,
+                        n_minus_one=False):
     """
     Create a dictionary defining the problem for input to the pglib model.
 
@@ -43,8 +44,22 @@ def create_problem_dict(demand, wind, env_params,
     else:
         raise ValueError('Must set reserve_pct of reserve_mw')
 
-    max_reserves = np.ones(net_demand.size)*env.max_demand - np.array(net_demand)
-    reserves = list(np.min(np.array([reserves, max_reserves]), axis=0))
+    # N-1 criterion: must always have at least reserve equal to the largest generator's capacity
+    min_reserve = np.max(env.max_output) if n_minus_one else 0
+    print(n_minus_one)
+    reserves = np.maximum(reserves, min_reserve)
+
+    # Reserve shouldn't push beyond max_demand (sum of max_output)
+    max_reserves = env.max_demand - net_demand
+    reserves = np.minimum(reserves, max_reserves)
+
+    reserves = list(reserves)
+
+    print(reserves)
+
+    # max_reserves = np.ones(net_demand.size)*env.max_demand - np.array(net_demand)
+    # reserves = np.clip()
+    # reserves = list(np.min(np.array([reserves, max_reserves]), axis=0))
 
     dispatch_freq = env.dispatch_freq_mins/60
     num_periods = len(net_demand)

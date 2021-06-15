@@ -7,8 +7,9 @@ import json
 import os 
 import time
 
-from rl4uc.rl4uc.environment import make_env
-from helpers import test_schedule, save_results, get_scenarios
+from rl4uc.environment import make_env
+from ts4uc import helpers as ts4uc_helpers
+from helpers import get_scenarios
 from create_milp_dict import create_problem_dict
 from uc_model import solve_milp, solution_to_schedule
 
@@ -28,8 +29,10 @@ if __name__=="__main__":
                         help='Reserve margin as percent of forecast net demand')
     parser.add_argument('--reserve_sigma', type=int, required=False, default=None,
                         help='Number of sigma to consider for reserve constraint')
-    parser.add_argument('--perfect_forecast', type=bool, required=False, default=False,
+    parser.add_argument('--perfect_forecast', action='store_true',
                         help='Boolean for perfect forecast')
+    parser.add_argument('--n_minus_one', action='store_true',
+                        help='Boolean for including n-1 criterion')
 
     args = parser.parse_args()
 
@@ -77,12 +80,13 @@ if __name__=="__main__":
         
         prof_name = f.split('.')[0]
         print(prof_name)
+        print("n_minus_one: ", args.n_minus_one)
 
         # Formulate the problem dictionary (with wind)
         profile_df = pd.read_csv(os.path.join(args.test_data_dir, f))
         demand = profile_df.demand.values
         wind = profile_df.wind.values
-        problem_dict = create_problem_dict(demand, wind, env_params=env_params, reserve_pct=args.reserve_pct, reserve_mw=reserve_mw)
+        problem_dict = create_problem_dict(demand, wind, env_params=env_params, reserve_pct=args.reserve_pct, reserve_mw=reserve_mw, n_minus_one=args.n_minus_one)
         
 
         fn = prof_name + '.json'
@@ -107,13 +111,25 @@ if __name__=="__main__":
         env = make_env(mode='test', profiles_df=profile_df, **env_params)
 
         TEST_SAMPLE_SEED=999
-        test_costs, lost_loads = test_schedule(env, schedule, TEST_SAMPLE_SEED, args.num_samples, args.perfect_forecast)
-        save_results(prof_name, args.save_dir, env.num_gen, schedule, test_costs, lost_loads, time_taken)
+        if args.perfect_forecast:
+            args.num_samples = 1
+        results = ts4uc_helpers.test_schedule(env, schedule, TEST_SAMPLE_SEED, args.num_samples, args.perfect_forecast)
+        ts4uc_helpers.save_results(prof_name=prof_name, 
+                                 save_dir=args.save_dir, 
+                                 num_gen=env.num_gen, 
+                                 schedule=schedule,
+                                 test_costs=results['total_cost'].values, 
+                                 test_kgco2=results['kgco2'].values,
+                                 lost_loads=results['lost_load_events'].values,
+                                 results_df=results,
+                                 time_taken=time_taken)
+
 
         print("Done")
         print()
-        print("Mean costs: ${:.2f}".format(np.mean(test_costs)))
-        print("Lost load prob: {:.3f}%".format(100*np.sum(lost_loads)/(args.num_samples * env.episode_length)))
+        print("Mean costs: ${:.2f}".format(np.mean(results['total_cost'])))
+        print("Mean CO2: {:.2f}kg".format(np.mean(results['kgco2'])))
+        print("Lost load prob: {:.3f}%".format(100*np.sum(results['lost_load_events'])/(args.num_samples * env.episode_length)))
         print("Time taken: {:.2f}s".format(time_taken))
         print() 
 

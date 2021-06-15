@@ -1,6 +1,8 @@
 from create_milp_dict import create_problem_dict
-from uc_model import solve_milp
-import numpy as np 
+from uc_model import solve_milp, solution_to_schedule
+from rl4uc.rl4uc.environment import make_env
+import numpy as np
+import pandas as pd
 
 
 def test_kazarlis():
@@ -20,8 +22,23 @@ def test_kazarlis():
 
     print("${:.2f}".format(solution.obj()))
 
-    assert (solution.obj() < 570000) and (solution.obj() > 550000)
+#    assert (solution.obj() < 570000) and (solution.obj() > 550000)
+
+    schedule = solution_to_schedule(solution, problem_dict)
+    df = pd.DataFrame({'demand': demand, 'wind': wind})
+    env = make_env(mode='test', profiles_df=df, **env_params)
+    env.reset()
+    cost = 0
+    for a in schedule:
+        print(a)
+        o, r, d = env.step(a, deterministic=True)
+        cost -= r
+    print(cost)
+        
+    
 
 
 if __name__ == '__main__':
     test_kazarlis()
+
+    
